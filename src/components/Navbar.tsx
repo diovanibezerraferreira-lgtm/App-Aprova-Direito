@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ActiveTab, UserProfile } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Scale, Crown, User, Menu, X, LogOut, CheckCircle2 } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallBanner';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -100,6 +101,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Zone 3: Primary Action & Profile Zone */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* PWA Install Button */}
+            <PWAInstallButton variant="header" />
+
             {/* Premium CTA Button */}
             <button
               onClick={() => handleNavClick('premium')}
@@ -203,6 +207,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {link.label}
               </button>
             ))}
+          </div>
+
+          {/* PWA Install in Mobile Drawer */}
+          <div className="pt-1 pb-1">
+            <PWAInstallButton variant="menu" />
           </div>
 
           <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">

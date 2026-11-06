@@ -6,6 +6,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { AuthModal } from './components/AuthModal';
 import { PremiumModal } from './components/PremiumModal';
 import { DisciplineModal } from './components/DisciplineModal';
+import { OfflineStatusIndicator } from './components/PWAInstallBanner';
 
 import { HomeView } from './views/HomeView';
 import { OABHubView } from './views/OABHubView';
@@ -159,6 +160,9 @@ function AppContent() {
         onStartQuestions={handleStartQuestionsFromDiscipline}
         onOpenMaterials={handleOpenMaterialsFromDiscipline}
       />
+
+      {/* Offline Status Indicator */}
+      <OfflineStatusIndicator />
     </div>
   );
 }

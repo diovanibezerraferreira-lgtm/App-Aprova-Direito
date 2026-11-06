@@ -305,6 +305,16 @@ export const SIMULADO_PRESETS: ExtendedSimuladoConfig[] = [
     category: 'disciplina'
   },
   {
+    id: 'simulado-disc-lep',
+    title: 'Desafio OAB & Concursos: Lei de Execução Penal (LEP) (20 Questões)',
+    description: 'Lei nº 7.210/1984, progressão pós-Pacote Anticrime, saídas temporárias (Lei 14.843/2024), remição e RDD.',
+    disciplineId: 'lep',
+    questionCount: 20,
+    timeLimitMinutes: 45,
+    level: 'Execução Penal',
+    category: 'disciplina'
+  },
+  {
     id: 'simulado-disc-trabalho',
     title: 'Desafio OAB: Direito do Trabalho (20 Questões)',
     description: 'CLT pós-reforma, jornada de trabalho, verbas rescisórias, equiparação e estabilidades.',

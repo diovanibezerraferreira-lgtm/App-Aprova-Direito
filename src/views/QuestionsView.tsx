@@ -13,7 +13,10 @@ import {
   Scale,
   Award,
   Filter,
-  Info
+  Info,
+  SlidersHorizontal,
+  Layers,
+  Flame
 } from 'lucide-react';
 
 interface QuestionsViewProps {
@@ -26,17 +29,34 @@ export const QuestionsView: React.FC<QuestionsViewProps> = ({
   onRefreshPerformance
 }) => {
   const [selectedDiscipline, setSelectedDiscipline] = useState<string>(initialDisciplineId || 'todas');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<'todas' | 'Fácil' | 'Médio' | 'Difícil'>('todas');
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [selectedOptionId, setSelectedOptionId] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
   const [isAnswered, setIsAnswered] = useState<boolean>(false);
   const [sessionHits, setSessionHits] = useState<number>(0);
   const [sessionMisses, setSessionMisses] = useState<number>(0);
 
-  // Filtered questions
-  const filteredQuestions = useMemo(() => {
-    if (selectedDiscipline === 'todas') return MOCK_QUESTIONS;
-    return MOCK_QUESTIONS.filter(q => q.disciplineId === selectedDiscipline);
+  // Counts by difficulty for the currently selected discipline
+  const difficultyCounts = useMemo(() => {
+    const base = selectedDiscipline === 'todas'
+      ? MOCK_QUESTIONS
+      : MOCK_QUESTIONS.filter(q => q.disciplineId === selectedDiscipline);
+    return {
+      todas: base.length,
+      facil: base.filter(q => q.difficulty === 'Fácil').length,
+      medio: base.filter(q => q.difficulty === 'Médio').length,
+      dificil: base.filter(q => q.difficulty === 'Difícil').length,
+    };
   }, [selectedDiscipline]);
+
+  // Filtered questions based on both discipline and difficulty
+  const filteredQuestions = useMemo(() => {
+    return MOCK_QUESTIONS.filter(q => {
+      const matchDiscipline = selectedDiscipline === 'todas' || q.disciplineId === selectedDiscipline;
+      const matchDifficulty = selectedDifficulty === 'todas' || q.difficulty === selectedDifficulty;
+      return matchDiscipline && matchDifficulty;
+    });
+  }, [selectedDiscipline, selectedDifficulty]);
 
   // Current active question
   const currentQuestion = filteredQuestions[currentIndex] || filteredQuestions[0];
@@ -178,6 +198,69 @@ export const QuestionsView: React.FC<QuestionsViewProps> = ({
             </select>
           </div>
         </div>
+
+        {/* Difficulty Selection Bar */}
+        <div className="bg-slate-100/90 p-2.5 sm:p-3 rounded-xl border border-slate-200/90 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4 text-[#0B1F3A]" />
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+              Dificuldade:
+            </span>
+            <span className="text-xs text-slate-500 hidden sm:inline">
+              Escolha o nível das questões para treinar
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5">
+            <button
+              onClick={() => { setSelectedDifficulty('todas'); setCurrentIndex(0); handleResetCurrent(); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                selectedDifficulty === 'todas'
+                  ? 'bg-[#0B1F3A] text-[#D4AF37] shadow-sm'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Todas ({difficultyCounts.todas})</span>
+            </button>
+
+            <button
+              onClick={() => { setSelectedDifficulty('Fácil'); setCurrentIndex(0); handleResetCurrent(); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                selectedDifficulty === 'Fácil'
+                  ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-700'
+                  : 'bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50/60'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>Fácil ({difficultyCounts.facil})</span>
+            </button>
+
+            <button
+              onClick={() => { setSelectedDifficulty('Médio'); setCurrentIndex(0); handleResetCurrent(); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                selectedDifficulty === 'Médio'
+                  ? 'bg-amber-500 text-slate-900 font-bold shadow-sm ring-1 ring-amber-600'
+                  : 'bg-white text-amber-800 border border-amber-200 hover:bg-amber-50/60'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span>Médio ({difficultyCounts.medio})</span>
+            </button>
+
+            <button
+              onClick={() => { setSelectedDifficulty('Difícil'); setCurrentIndex(0); handleResetCurrent(); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                selectedDifficulty === 'Difícil'
+                  ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-700'
+                  : 'bg-white text-rose-800 border border-rose-200 hover:bg-rose-50/60'
+              }`}
+            >
+              <Flame className="w-3.5 h-3.5 text-rose-500" />
+              <span>Difícil ({difficultyCounts.dificil})</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Active Question Card */}
@@ -191,9 +274,19 @@ export const QuestionsView: React.FC<QuestionsViewProps> = ({
                 {currentDisciplineInfo?.name || currentQuestion.disciplineId}
               </span>
               <span className="text-slate-300">·</span>
-              <span className="text-slate-600">{currentQuestion.subject}</span>
+              <span className="text-slate-600 truncate max-w-[200px] sm:max-w-none">{currentQuestion.subject}</span>
               <span className="text-slate-300">·</span>
-              <span className="text-slate-500">{currentQuestion.difficulty}</span>
+              <span
+                className={`px-2 py-0.5 rounded-md font-bold text-[11px] border ${
+                  currentQuestion.difficulty === 'Fácil'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : currentQuestion.difficulty === 'Médio'
+                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}
+              >
+                {currentQuestion.difficulty}
+              </span>
             </div>
             <div className="text-slate-500 font-medium">
               Questão {currentIndex + 1} de {filteredQuestions.length}
@@ -361,14 +454,30 @@ export const QuestionsView: React.FC<QuestionsViewProps> = ({
 
         </div>
       ) : (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 space-y-3">
-          <p className="text-sm text-slate-600">Nenhuma questão encontrada para este filtro.</p>
-          <button
-            onClick={() => setSelectedDiscipline('todas')}
-            className="px-4 py-2 bg-[#0B1F3A] text-white text-xs font-semibold rounded-lg"
-          >
-            Ver Todas as Questões
-          </button>
+        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+            <Filter className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-slate-800">Nenhuma questão encontrada para este filtro</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Não há questões no nível <strong className="text-slate-700">{selectedDifficulty}</strong> para a disciplina selecionada.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+            <button
+              onClick={() => { setSelectedDifficulty('todas'); handleResetCurrent(); }}
+              className="px-4 py-2 bg-[#0B1F3A] text-[#D4AF37] text-xs font-semibold rounded-lg shadow-sm"
+            >
+              Ver Todas as Dificuldades desta Disciplina
+            </button>
+            <button
+              onClick={() => { setSelectedDiscipline('todas'); setSelectedDifficulty('todas'); handleResetCurrent(); }}
+              className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-200"
+            >
+              Limpar Todos os Filtros
+            </button>
+          </div>
         </div>
       )}
 

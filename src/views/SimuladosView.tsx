@@ -38,6 +38,7 @@ export const SimuladosView: React.FC<SimuladosViewProps> = ({ onRefreshPerforman
   const [presetCategoryFilter, setPresetCategoryFilter] = useState<'all' | 'oab-oficial' | 'concursos' | 'blocos' | 'rapidos' | 'disciplina'>('all');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('simulado-oab-41');
   const [selectedDiscipline, setSelectedDiscipline] = useState<string>('todas');
+  const [customDifficulty, setCustomDifficulty] = useState<'todas' | 'Fácil' | 'Médio' | 'Difícil'>('todas');
   const [customQuestionCount, setCustomQuestionCount] = useState<number>(20);
   const [customTimeMinutes, setCustomTimeMinutes] = useState<number>(45);
 
@@ -185,16 +186,19 @@ export const SimuladosView: React.FC<SimuladosViewProps> = ({ onRefreshPerforman
       // Custom simulado builder
       timeMins = customTimeMinutes;
       const disc = OAB_DISCIPLINES.find(d => d.id === selectedDiscipline);
+      const diffLabel = customDifficulty === 'todas' ? '' : ` · Nível ${customDifficulty}`;
       title = selectedDiscipline === 'todas'
-        ? `Simulado Personalizado Geral (${customQuestionCount}Q)`
-        : `Simulado Personalizado: ${disc?.name || selectedDiscipline} (${customQuestionCount}Q)`;
+        ? `Simulado Personalizado Geral (${customQuestionCount}Q${diffLabel})`
+        : `Simulado Personalizado: ${disc?.name || selectedDiscipline} (${customQuestionCount}Q${diffLabel})`;
 
-      if (selectedDiscipline === 'todas') {
-        prepared = shuffleArray(MOCK_QUESTIONS).slice(0, customQuestionCount);
-      } else {
-        const match = shuffleArray(MOCK_QUESTIONS.filter(q => q.disciplineId === selectedDiscipline));
-        prepared = match.slice(0, customQuestionCount);
+      let pool = MOCK_QUESTIONS;
+      if (selectedDiscipline !== 'todas') {
+        pool = pool.filter(q => q.disciplineId === selectedDiscipline);
       }
+      if (customDifficulty !== 'todas') {
+        pool = pool.filter(q => q.difficulty === customDifficulty);
+      }
+      prepared = shuffleArray(pool).slice(0, customQuestionCount);
     }
 
     // Fallback if pool is smaller than requested
@@ -502,7 +506,7 @@ export const SimuladosView: React.FC<SimuladosViewProps> = ({ onRefreshPerforman
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                 Disciplina
@@ -518,6 +522,22 @@ export const SimuladosView: React.FC<SimuladosViewProps> = ({ onRefreshPerforman
                     {d.name} ({d.oabWeight}Q peso)
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                Dificuldade
+              </label>
+              <select
+                value={customDifficulty}
+                onChange={e => setCustomDifficulty(e.target.value as any)}
+                className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#0B1F3A]"
+              >
+                <option value="todas">Todas as Dificuldades (Mesclado)</option>
+                <option value="Fácil">Fácil (Fundamentos & Conceitos)</option>
+                <option value="Médio">Médio (Padrão Oficial FGV)</option>
+                <option value="Difícil">Difícil (Casos Críticos & Pegadinhas)</option>
               </select>
             </div>
 

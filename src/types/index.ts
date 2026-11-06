@@ -5,6 +5,7 @@ export type DisciplineId =
   | 'processo-civil'
   | 'penal'
   | 'processo-penal'
+  | 'lep'
   | 'trabalho'
   | 'processo-trabalho'
   | 'administrativo'

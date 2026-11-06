@@ -15,8 +15,10 @@ import {
   Sparkles,
   Users,
   ChevronRight,
-  GraduationCap
+  GraduationCap,
+  Smartphone
 } from 'lucide-react';
+import { PWAInstallButton } from '../components/PWAInstallBanner';
 
 interface HomeViewProps {
   onSelectTab: (tab: ActiveTab) => void;
@@ -63,6 +65,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
       icon: Award,
       title: 'Foco no Raio-X da FGV',
       description: 'Destaque especial para as 20 disciplinas da 1ª Fase OAB, priorizando matérias estratégicas como Ética e Constitucional.'
+    },
+    {
+      icon: Smartphone,
+      title: 'Aplicativo PWA (Android & iPhone)',
+      description: 'Instale o app direto no seu celular com ícone na tela inicial, abertura em tela cheia e acesso ultrarrápido com cache inteligente.'
     }
   ];
 
@@ -118,6 +125,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <Clock className="w-4 h-4 text-[#D4AF37]" />
                 <span>Iniciar Simulado</span>
               </button>
+
+              <PWAInstallButton variant="hero" />
 
               {!userProfile.isRegistered ? (
                 <button

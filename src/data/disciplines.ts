@@ -104,6 +104,31 @@ export const OAB_DISCIPLINES: Discipline[] = [
     keyArticles: ['CPP, arts. 311 a 315', 'CPP, arts. 406 a 497', 'CPP, arts. 581 e 593']
   },
   {
+    id: 'lep',
+    name: 'Lei de Execução Penal (LEP)',
+    shortName: 'LEP',
+    iconName: 'Lock',
+    oabWeight: 4,
+    category: 'processual',
+    description: 'Lei nº 7.210/1984. Regimes prisionais, progressão e regressão, saídas temporárias (Lei 14.843/2024), remição, livramento condicional, faltas disciplinares e recursos na execução.',
+    keyTopics: [
+      'Progressão de Regime e Porcentagens do Pacote Anticrime (Art. 112)',
+      'Saídas Temporárias e Monitoramento Eletrônico (Lei nº 14.843/2024)',
+      'Remição de Pena por Trabalho e por Estudo (Art. 126)',
+      'Faltas Disciplinares Leves, Médias e Graves e Sanções (Arts. 49 a 52)',
+      'Regime Disciplinar Diferenciado - RDD (Art. 52)',
+      'Livramento Condicional e Requisitos Subjetivos/Objetivos (Art. 83 CP e LEP)',
+      'Agravo em Execução Penal e Procedimento Judicial (Art. 197)'
+    ],
+    keyArticles: [
+      'LEP, art. 112 (Critérios objetivos de progressão)',
+      'LEP, arts. 122 a 125 (Saídas temporárias e restrições)',
+      'LEP, art. 126 (Remição de pena)',
+      'LEP, art. 50 e art. 52 (Faltas graves e RDD)',
+      'LEP, art. 197 (Agravo em Execução)'
+    ]
+  },
+  {
     id: 'trabalho',
     name: 'Direito do Trabalho',
     shortName: 'Trabalho',
