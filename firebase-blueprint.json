@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Dados cadastrais e preferências de estudo do usuário",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador do usuário no Firebase Auth (UID)"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Nome completo do estudante"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Endereço de e-mail cadastrado"
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["gratuito", "premium"],
+          "description": "Plano de assinatura do usuário"
+        },
+        "studyFocus": {
+          "type": "string",
+          "enum": ["OAB 1ª Fase", "OAB 2ª Fase", "Concursos Jurídicos"],
+          "description": "Foco prioritário de estudos"
+        },
+        "dailyGoalQuestions": {
+          "type": "number",
+          "description": "Meta diária de questões a resolver"
+        },
+        "termsAccepted": {
+          "type": "boolean",
+          "description": "Indica aceite dos termos de uso e política de privacidade"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Data de criação do perfil"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Data da última atualização do perfil"
+        }
+      },
+      "required": ["id", "name", "email", "plan", "studyFocus", "termsAccepted", "createdAt"]
+    },
+    "UserAnswer": {
+      "title": "UserAnswer",
+      "description": "Registro de resposta a uma questão jurídica",
+      "type": "object",
+      "properties": {
+        "questionId": {
+          "type": "string",
+          "description": "ID da questão respondida"
+        },
+        "disciplineId": {
+          "type": "string",
+          "description": "Disciplina da questão"
+        },
+        "selectedOptionId": {
+          "type": "string",
+          "enum": ["A", "B", "C", "D"],
+          "description": "Opção assinalada pelo aluno"
+        },
+        "isCorrect": {
+          "type": "boolean",
+          "description": "Indica se o aluno acertou a questão"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Timestamp da resposta em milissegundos"
+        }
+      },
+      "required": ["questionId", "disciplineId", "selectedOptionId", "isCorrect", "timestamp"]
+    },
+    "UserSimulado": {
+      "title": "UserSimulado",
+      "description": "Resultado de simulado cronometrado realizado pelo aluno",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único do simulado"
+        },
+        "configTitle": {
+          "type": "string",
+          "description": "Título da modalidade do simulado"
+        },
+        "disciplineId": {
+          "type": "string",
+          "description": "Disciplina ou 'todas'"
+        },
+        "totalQuestions": {
+          "type": "number",
+          "description": "Quantidade total de questões do simulado"
+        },
+        "correctAnswers": {
+          "type": "number",
+          "description": "Número de acertos obtidos"
+        },
+        "timeSpentSeconds": {
+          "type": "number",
+          "description": "Tempo gasto na resolução em segundos"
+        },
+        "date": {
+          "type": "string",
+          "description": "Data formatada da realização"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Timestamp em milissegundos"
+        }
+      },
+      "required": ["id", "configTitle", "totalQuestions", "correctAnswers", "timeSpentSeconds", "date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Perfil pessoal e configurações de estudo de cada aluno"
+    },
+    "/users/{userId}/answers/{questionId}": {
+      "schema": {
+        "$ref": "#/entities/UserAnswer"
+      },
+      "description": "Respostas a questões do aluno autenticado"
+    },
+    "/users/{userId}/simulados/{simuladoId}": {
+      "schema": {
+        "$ref": "#/entities/UserSimulado"
+      },
+      "description": "Histórico de simulados cronometrados do aluno autenticado"
+    }
+  }
+}

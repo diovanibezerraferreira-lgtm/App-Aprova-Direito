@@ -1,0 +1,6 @@
+{
+  "name": "Aprova Direito",
+  "description": "Plataforma profissional de estudos para OAB e concursos jurídicos com questões comentadas, simulados cronometrados e laboratório de peças processuais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

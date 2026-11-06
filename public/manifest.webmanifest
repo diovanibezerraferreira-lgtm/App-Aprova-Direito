@@ -1,0 +1,17 @@
+{
+  "name": "Aprova Direito",
+  "short_name": "AprovaDireito",
+  "description": "Plataforma de estudos para OAB e Concursos Jurídicos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1F3A",
+  "theme_color": "#0B1F3A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
