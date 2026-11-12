@@ -1,0 +1,112 @@
+{
+  "total_before_correction": 6300,
+  "total_duplicates_found": 5154,
+  "total_valid_unique_remaining": 1386,
+  "disciplines_breakdown": {
+    "administrativo": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "ambiental": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "civil": {
+      "total_before": 300,
+      "duplicates_removed": 264,
+      "valid_unique_now": 66
+    },
+    "constitucional": {
+      "total_before": 300,
+      "duplicates_removed": 264,
+      "valid_unique_now": 66
+    },
+    "consumidor": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "crianca-adolescente": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "direitos-humanos": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "eleitoral": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "empresarial": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "etica": {
+      "total_before": 300,
+      "duplicates_removed": 264,
+      "valid_unique_now": 66
+    },
+    "filosofia": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "financeiro": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "internacional": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "lep": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "penal": {
+      "total_before": 300,
+      "duplicates_removed": 264,
+      "valid_unique_now": 66
+    },
+    "previdenciario": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    },
+    "processo-civil": {
+      "total_before": 300,
+      "duplicates_removed": 264,
+      "valid_unique_now": 66
+    },
+    "processo-penal": {
+      "total_before": 300,
+      "duplicates_removed": 264,
+      "valid_unique_now": 66
+    },
+    "processo-trabalho": {
+      "total_before": 300,
+      "duplicates_removed": 264,
+      "valid_unique_now": 66
+    },
+    "trabalho": {
+      "total_before": 300,
+      "duplicates_removed": 264,
+      "valid_unique_now": 66
+    },
+    "tributario": {
+      "total_before": 300,
+      "duplicates_removed": 234,
+      "valid_unique_now": 66
+    }
+  }
+}

@@ -57,6 +57,7 @@ export interface QuestionAnswerRecord {
   isCorrect: boolean;
   timestamp: number;
   disciplineId: DisciplineId;
+  subject?: string;
 }
 
 export interface SimuladoConfig {
@@ -87,7 +88,15 @@ export interface SimuladoResult {
 export interface LegalBrief {
   id: string;
   title: string;
-  area: 'Direito Penal' | 'Direito do Trabalho' | 'Direito Processual Civil';
+  area:
+    | 'Direito Processual Civil'
+    | 'Direito Civil'
+    | 'Direito Penal'
+    | 'Direito do Trabalho'
+    | 'Direito Constitucional'
+    | 'Direito Tributário'
+    | 'Direito Empresarial';
+  subject: string;
   legalBasis: string;
   legalDeadlines: string;
   jurisdiction: string;

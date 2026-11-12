@@ -11,9 +11,13 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        injectRegister: null, // Managed cleanly in src/main.tsx to avoid duplicate SW registration
         includeAssets: [
+          'manifest.webmanifest',
           'apple-touch-icon.png',
           'icon.svg',
+          'icons/icon-192.png',
+          'icons/icon-512.png',
           'pwa-192x192.png',
           'pwa-512x512.png',
           'pwa-maskable-512x512.png',
@@ -23,7 +27,7 @@ export default defineConfig(() => {
           id: '/',
           name: 'Aprova Direito',
           short_name: 'Aprova Direito',
-          description: 'Plataforma de estudos para OAB e concursos jurídicos.',
+          description: 'Plataforma de estudos para OAB e concursos jurídicos',
           theme_color: '#0B1F3A',
           background_color: '#0B1F3A',
           display: 'standalone',
@@ -32,19 +36,19 @@ export default defineConfig(() => {
           scope: '/',
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: '/icons/icon-192.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
+              src: '/icons/icon-512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-maskable-512x512.png',
+              src: '/icons/icon-512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
@@ -52,7 +56,7 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          maximumFileSizeToCacheInBytes: 15 * 1024 * 1024, // 15 MiB for rich legal questions & study manuals
+          maximumFileSizeToCacheInBytes: 35 * 1024 * 1024, // 35 MiB for 6,300+ legal questions and manuals
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           navigateFallbackDenylist: [/^\/__/, /^\/api/],
           runtimeCaching: [

@@ -195,13 +195,16 @@ def make_icon_renderer(is_maskable=False):
     return renderer
 
 def main():
+    os.makedirs("public/icons", exist_ok=True)
     os.makedirs("public", exist_ok=True)
     
     print("Generating standard icon renderer...")
     render_std = make_icon_renderer(is_maskable=False)
     
-    print("Rendering pwa-192x192.png...")
+    print("Rendering public/icons/icon-192.png and public/pwa-192x192.png...")
     png_192 = create_png(192, 192, render_std)
+    with open("public/icons/icon-192.png", "wb") as f:
+        f.write(png_192)
     with open("public/pwa-192x192.png", "wb") as f:
         f.write(png_192)
 
@@ -210,8 +213,10 @@ def main():
     with open("public/apple-touch-icon.png", "wb") as f:
         f.write(png_180)
 
-    print("Rendering pwa-512x512.png...")
+    print("Rendering public/icons/icon-512.png and public/pwa-512x512.png...")
     png_512 = create_png(512, 512, render_std)
+    with open("public/icons/icon-512.png", "wb") as f:
+        f.write(png_512)
     with open("public/pwa-512x512.png", "wb") as f:
         f.write(png_512)
 

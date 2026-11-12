@@ -98,7 +98,7 @@ export const PWAInstallModal: React.FC<{ onClose: () => void; isIOS: boolean }> 
         <div className="flex items-center justify-between pb-4 border-b border-slate-700/60">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F284D] to-[#08162B] border border-[#D4AF37]/40 flex items-center justify-center shadow-md">
-              <img src="/pwa-192x192.png" alt="Aprova Direito" className="w-7 h-7 object-contain" />
+              <img src="/icons/icon-192.png" alt="Aprova Direito" className="w-7 h-7 object-contain" />
             </div>
             <div>
               <h3 className="font-serif text-lg font-bold text-white tracking-wide">Aprova Direito</h3>

@@ -64,6 +64,19 @@ export const saveQuestionAnswer = (record: QuestionAnswerRecord): QuestionAnswer
   }
 };
 
+export const resetQuestionAnswers = (questionIds: string[]): QuestionAnswerRecord[] => {
+  try {
+    const current = getStoredAnswers();
+    const idSet = new Set(questionIds);
+    const filtered = current.filter(a => !idSet.has(a.questionId));
+    localStorage.setItem(ANSWERS_KEY, JSON.stringify(filtered));
+    return filtered;
+  } catch (e) {
+    console.error('Failed to reset answers', e);
+    return [];
+  }
+};
+
 export const getStoredSimulados = (): SimuladoResult[] => {
   try {
     const raw = localStorage.getItem(SIMULADOS_KEY);
