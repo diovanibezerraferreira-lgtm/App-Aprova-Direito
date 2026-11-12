@@ -43,7 +43,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup' | 'forgot'>('login');
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeDoc: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+        unsubscribeDoc = null;
+      }
+
       setCurrentUser(user);
       if (user) {
         try {
@@ -57,6 +64,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           setUserProfile(profile);
           saveStoredProfile(profile);
+
+          // Real-time listener: When Asaas Webhook updates user doc, UI updates automatically!
+          try {
+            const { doc, onSnapshot } = await import('firebase/firestore');
+            const { db } = await import('../services/firebase');
+            unsubscribeDoc = onSnapshot(doc(db, 'users', user.uid), (snapshot) => {
+              if (snapshot.exists()) {
+                const updatedData = snapshot.data() as ExtendedUserProfile;
+                setUserProfile(updatedData);
+                saveStoredProfile(updatedData);
+              }
+            }, (err) => {
+              console.warn('Real-time profile listener notice:', err);
+            });
+          } catch (listenerErr) {
+            console.warn('Could not attach profile listener:', listenerErr);
+          }
         } catch (e) {
           console.error('Error fetching user profile:', e);
           const fallback = getStoredProfile();
@@ -76,7 +100,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+      }
+    };
   }, []);
 
   const openAuthModal = (mode: 'login' | 'signup' | 'forgot' = 'login') => {

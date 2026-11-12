@@ -37,6 +37,39 @@
           "type": "boolean",
           "description": "Indica aceite dos termos de uso e política de privacidade"
         },
+        "isPremium": {
+          "type": "boolean",
+          "description": "Indica se o aluno possui plano Premium ativo"
+        },
+        "subscriptionStatus": {
+          "type": "string",
+          "enum": ["NONE", "PENDING", "ACTIVE", "OVERDUE", "CANCELLED"],
+          "description": "Status da assinatura no Asaas"
+        },
+        "subscriptionId": {
+          "type": "string",
+          "description": "Identificador da assinatura recorrente no Asaas"
+        },
+        "asaasCustomerId": {
+          "type": "string",
+          "description": "Identificador do cliente no Asaas"
+        },
+        "subscriptionDueDate": {
+          "type": "string",
+          "description": "Data de vencimento da próxima fatura"
+        },
+        "lastPaymentDate": {
+          "type": "string",
+          "description": "Data do último pagamento confirmado"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Forma de pagamento utilizada (CREDIT_CARD, PIX, etc.)"
+        },
+        "cpf": {
+          "type": "string",
+          "description": "CPF cadastrado para faturamento da assinatura"
+        },
         "createdAt": {
           "type": "string",
           "description": "Data de criação do perfil"

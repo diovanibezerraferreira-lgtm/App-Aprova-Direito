@@ -1,0 +1,64 @@
+import type { IncomingMessage, ServerResponse } from 'http';
+import { verifyFirebaseUser, getAdminFirestore } from './_firebaseAdmin.js';
+import { getAsaasConfig, asaasFetch } from './_asaas.js';
+
+function sendJson(res: ServerResponse, status: number, payload: any) {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(payload));
+}
+
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  if (req.method !== 'GET') {
+    return sendJson(res, 405, { error: 'Método não permitido' });
+  }
+
+  try {
+    const user = await verifyFirebaseUser(req);
+    if (!user || !user.uid) {
+      return sendJson(res, 401, { error: 'Não autorizado.' });
+    }
+
+    const config = getAsaasConfig();
+    const db = getAdminFirestore();
+
+    let userDocData: any = null;
+    if (db) {
+      const doc = await db.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        userDocData = doc.data();
+      }
+    }
+
+    let asaasDetails: any = null;
+    if (config.isConfigured && userDocData?.subscriptionId) {
+      try {
+        const sub = await asaasFetch<any>(`/subscriptions/${userDocData.subscriptionId}`);
+        const payments = await asaasFetch<any>(`/subscriptions/${userDocData.subscriptionId}/payments`);
+        asaasDetails = {
+          status: sub.status,
+          nextDueDate: sub.nextDueDate,
+          value: sub.value,
+          billingType: sub.billingType,
+          recentPayments: payments.data || [],
+        };
+      } catch (err: any) {
+        console.warn('Não foi possível obter detalhes diretos da assinatura no Asaas:', err.message);
+      }
+    }
+
+    return sendJson(res, 200, {
+      isPremium: !!userDocData?.isPremium,
+      subscriptionStatus: userDocData?.subscriptionStatus || 'NONE',
+      subscriptionId: userDocData?.subscriptionId || null,
+      asaasCustomerId: userDocData?.asaasCustomerId || null,
+      subscriptionDueDate: userDocData?.subscriptionDueDate || null,
+      environment: config.env,
+      sandbox: !config.isProduction,
+      asaasDetails,
+    });
+  } catch (error: any) {
+    console.error('Erro em subscription-status:', error);
+    return sendJson(res, 500, { error: error.message || 'Erro ao consultar assinatura.' });
+  }
+}

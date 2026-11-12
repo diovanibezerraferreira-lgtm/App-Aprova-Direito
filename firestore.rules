@@ -26,12 +26,24 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // Protected financial fields that only the backend Admin SDK may modify
+    function doesNotModifyFinancialFields() {
+      let protectedFields = ['isPremium', 'subscriptionStatus', 'subscriptionId', 'asaasCustomerId', 'subscriptionDueDate', 'lastPaymentDate', 'paymentMethod'];
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedFields);
+    }
+
+    function validInitialFinancialState() {
+      // Clients creating their own document cannot set isPremium to true or assign active subscriptions
+      return (!('isPremium' in request.resource.data) || request.resource.data.isPremium == false)
+          && (!('subscriptionStatus' in request.resource.data) || request.resource.data.subscriptionStatus == null || request.resource.data.subscriptionStatus == 'NONE');
+    }
+
     // User Profile Document
     match /users/{userId} {
       allow get: if isOwner(userId) && isValidId(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidId(userId);
-      allow update: if isOwner(userId) && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && validInitialFinancialState();
+      allow update: if isOwner(userId) && isValidId(userId) && doesNotModifyFinancialFields();
       allow delete: if isOwner(userId) && isValidId(userId);
 
       // User Answer Subcollection

@@ -141,6 +141,13 @@ export interface UserProfile {
   dailyGoalQuestions: number;
   memberSince: string;
   isPremium: boolean;
+  subscriptionStatus?: 'NONE' | 'PENDING' | 'ACTIVE' | 'OVERDUE' | 'CANCELLED';
+  subscriptionId?: string;
+  asaasCustomerId?: string;
+  subscriptionDueDate?: string;
+  lastPaymentDate?: string;
+  paymentMethod?: string;
+  cpf?: string;
 }
 
 export type ActiveTab =
