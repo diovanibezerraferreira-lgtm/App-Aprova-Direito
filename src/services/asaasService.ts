@@ -43,6 +43,31 @@ export function formatCPF(value: string): string {
 }
 
 /**
+ * Normalize whitespace in a full name without altering user letters
+ */
+export function sanitizeFullName(raw?: string | null): string {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw.trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Validate full name (first + last name, letters/spaces/hyphens/apostrophes, no digits or symbols)
+ */
+export function isValidFullName(raw?: string | null): boolean {
+  const clean = sanitizeFullName(raw);
+  if (clean.length < 5 || clean.length > 120) return false;
+  if (clean.toLowerCase() === 'estudante concurseiro') return false;
+  if (/\d/.test(clean)) return false;
+  if (!/^[\p{L}\s'’-]+$/u.test(clean)) return false;
+
+  const words = clean.split(' ').filter(Boolean);
+  if (words.length < 2) return false;
+
+  const meaningfulWords = words.filter((w) => (w.match(/\p{L}/gu) || []).length >= 2);
+  return meaningfulWords.length >= 2 && words.every((w) => /\p{L}/u.test(w));
+}
+
+/**
  * Validate Brazilian CPF syntax
  */
 export function isValidCPF(cpf: string): boolean {
@@ -72,7 +97,10 @@ export function isValidCPF(cpf: string): boolean {
 /**
  * Request creation of Asaas monthly subscription via backend serverless function
  */
-export async function createAsaasSubscription(cpf?: string): Promise<CreateSubscriptionResponse> {
+export async function createAsaasSubscription(
+  cpf?: string,
+  fullName?: string
+): Promise<CreateSubscriptionResponse> {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('Você precisa estar autenticado para assinar o Aprova Direito Premium.');
@@ -80,6 +108,7 @@ export async function createAsaasSubscription(cpf?: string): Promise<CreateSubsc
 
   // Get fresh Firebase ID token
   const idToken = await user.getIdToken(true);
+  const normalizedName = sanitizeFullName(fullName || user.displayName || '');
 
   const response = await fetch('/api/create-subscription', {
     method: 'POST',
@@ -90,7 +119,7 @@ export async function createAsaasSubscription(cpf?: string): Promise<CreateSubsc
     body: JSON.stringify({
       cpf: cpf ? cleanCPF(cpf) : undefined,
       email: user.email,
-      name: user.displayName || user.email?.split('@')[0],
+      name: normalizedName || undefined,
     }),
   });
 

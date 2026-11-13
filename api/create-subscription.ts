@@ -5,6 +5,8 @@ import {
   getOrCreateCustomer,
   createMonthlySubscription,
   getSubscriptionPendingCheckoutUrl,
+  sanitizeFullName,
+  isValidFullName,
 } from './_asaas.js';
 
 type RequestWithBody = IncomingMessage & { body?: any };
@@ -80,6 +82,17 @@ function sendJson(res: ServerResponse, status: number, payload: any) {
   res.end(JSON.stringify(payload));
 }
 
+function resolveValidCustomerName(candidates: Array<unknown>): string | null {
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    const clean = sanitizeFullName(candidate);
+    if (isValidFullName(clean)) {
+      return clean;
+    }
+  }
+  return null;
+}
+
 export default async function handler(req: RequestWithBody, res: ServerResponse) {
   if (req.method !== 'POST') {
     return sendJson(res, 405, { error: 'Método não permitido. Utilize POST.' });
@@ -127,6 +140,30 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
       });
     }
 
+    // 3. Identify customer email and validated full name (never invent data or fall back to email prefix)
+    const email = user.email || body.email;
+    if (!email) {
+      return sendJson(res, 400, {
+        error: 'E-mail do usuário não encontrado. Certifique-se de que sua conta possui um e-mail válido.',
+      });
+    }
+
+    const name = resolveValidCustomerName([body.name, existingUserData?.name, user.name]);
+    if (!name) {
+      return sendJson(res, 400, {
+        error:
+          'Informe seu nome completo (nome e sobrenome, apenas letras, sem números ou símbolos) para emitir a assinatura no Asaas.',
+      });
+    }
+
+    // 4. Create or retrieve customer in Asaas (and sync corrected full name / CPF if already registered)
+    const customer = await getOrCreateCustomer({
+      name,
+      email,
+      cpfCnpj: cpf,
+      externalReference: user.uid,
+    });
+
     if (existingUserData?.subscriptionId && existingUserData?.subscriptionStatus === 'PENDING') {
       const existingCheckoutUrl = await getSubscriptionPendingCheckoutUrl(
         existingUserData.subscriptionId
@@ -136,31 +173,13 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
           success: true,
           checkoutUrl: existingCheckoutUrl,
           subscriptionId: existingUserData.subscriptionId,
-          customerId: existingUserData.asaasCustomerId || null,
+          customerId: customer.id || existingUserData.asaasCustomerId || null,
           environment: config.env,
           sandbox: !config.isProduction,
           reused: true,
         });
       }
     }
-
-    // 3. Identify customer name and email from verified Firebase user
-    const email = user.email || body.email;
-    if (!email) {
-      return sendJson(res, 400, {
-        error: 'E-mail do usuário não encontrado. Certifique-se de que sua conta possui um e-mail válido.',
-      });
-    }
-
-    const name = user.name || body.name || email.split('@')[0];
-
-    // 4. Create or retrieve customer in Asaas (linked via externalReference = Firebase UID)
-    const customer = await getOrCreateCustomer({
-      name,
-      email,
-      cpfCnpj: cpf,
-      externalReference: user.uid,
-    });
 
     // 5. Create monthly subscription (R$ 29,90) with hosted checkout (Credit Card + Pix)
     const { subscription, invoiceUrl } = await createMonthlySubscription({

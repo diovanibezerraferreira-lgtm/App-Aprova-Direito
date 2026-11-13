@@ -21,7 +21,9 @@ import {
   fetchSubscriptionStatus,
   formatCPF,
   isValidCPF,
-  cleanCPF
+  cleanCPF,
+  sanitizeFullName,
+  isValidFullName
 } from '../services/asaasService';
 
 interface PremiumModalProps {
@@ -37,6 +39,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
 }) => {
   const { currentUser, userProfile, openAuthModal, updateProfileData } = useAuth();
 
+  const [fullName, setFullName] = useState('');
   const [cpf, setCpf] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
@@ -44,6 +47,19 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const candidate = sanitizeFullName(userProfile?.name || currentUser?.displayName || '');
+    const emailPrefix = (currentUser?.email || userEmail || '').split('@')[0]?.toLowerCase() || '';
+    const isEmailFallback =
+      candidate.length > 0 &&
+      candidate.toLowerCase() === emailPrefix &&
+      !isValidFullName(candidate);
+
+    if (candidate && candidate.toLowerCase() !== 'estudante concurseiro' && !isEmailFallback) {
+      setFullName(candidate);
+    }
+  }, [userProfile?.name, currentUser?.displayName, currentUser?.email, userEmail]);
 
   useEffect(() => {
     if (userProfile?.cpf) {
@@ -74,6 +90,14 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
       return;
     }
 
+    const normalizedName = sanitizeFullName(fullName);
+    if (!isValidFullName(normalizedName)) {
+      setErrorMsg(
+        'Informe seu nome completo (nome e sobrenome, apenas letras, sem números ou símbolos) exatamente como no seu documento/cartão.'
+      );
+      return;
+    }
+
     const cleanedCpf = cleanCPF(cpf);
     if (!isValidCPF(cleanedCpf)) {
       setErrorMsg('Por favor, informe um CPF válido (11 dígitos) para emissão da assinatura.');
@@ -82,12 +106,19 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
 
     setLoading(true);
     try {
-      // Salva apenas o CPF de faturamento no perfil (campos financeiros continuam protegidos no backend)
+      // Salva nome completo e CPF de faturamento no perfil (campos financeiros continuam protegidos no backend)
+      const profileUpdates: Record<string, string> = {};
+      if (normalizedName !== sanitizeFullName(userProfile?.name)) {
+        profileUpdates.name = normalizedName;
+      }
       if (cleanedCpf !== userProfile?.cpf) {
-        await updateProfileData({ cpf: cleanedCpf }).catch(() => {});
+        profileUpdates.cpf = cleanedCpf;
+      }
+      if (Object.keys(profileUpdates).length > 0) {
+        await updateProfileData(profileUpdates).catch(() => {});
       }
 
-      const result = await createAsaasSubscription(cleanedCpf);
+      const result = await createAsaasSubscription(cleanedCpf, normalizedName);
       if (result.checkoutUrl) {
         setCheckoutUrl(result.checkoutUrl);
         setIsSandbox(!!result.sandbox);
@@ -347,6 +378,24 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                     value={currentUser.email || userEmail}
                     className="w-full px-3 py-2 text-xs border border-slate-200 bg-slate-50 text-slate-500 rounded-lg cursor-not-allowed"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Nome completo do titular (como no cartão/documento)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    placeholder="Ex.: Maria Aparecida da Silva"
+                    maxLength={120}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0B1F3A]"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Informe nome e sobrenome (apenas letras, sem abreviações com ponto ou números).
+                  </p>
                 </div>
 
                 <div>

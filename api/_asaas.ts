@@ -136,6 +136,25 @@ export async function asaasFetch<T>(
   return data as T;
 }
 
+export function sanitizeFullName(raw?: string | null): string {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw.trim().replace(/\s+/g, ' ');
+}
+
+export function isValidFullName(raw?: string | null): boolean {
+  const clean = sanitizeFullName(raw);
+  if (clean.length < 5 || clean.length > 120) return false;
+  if (clean.toLowerCase() === 'estudante concurseiro') return false;
+  if (/\d/.test(clean)) return false;
+  if (!/^[\p{L}\s'’-]+$/u.test(clean)) return false;
+
+  const words = clean.split(' ').filter(Boolean);
+  if (words.length < 2) return false;
+
+  const meaningfulWords = words.filter((w) => (w.match(/\p{L}/gu) || []).length >= 2);
+  return meaningfulWords.length >= 2 && words.every((w) => /\p{L}/u.test(w));
+}
+
 /**
  * Find customer by email or externalReference (Firebase UID)
  */
@@ -155,7 +174,7 @@ export async function findCustomer(identifier: {
 }
 
 /**
- * Create or retrieve customer in Asaas
+ * Create or retrieve customer in Asaas, ensuring the customer's full name and CPF are synchronized.
  */
 export async function getOrCreateCustomer(params: {
   name: string;
@@ -163,6 +182,15 @@ export async function getOrCreateCustomer(params: {
   cpfCnpj?: string;
   externalReference: string;
 }): Promise<AsaasCustomer> {
+  const cleanName = sanitizeFullName(params.name);
+  if (!isValidFullName(cleanName)) {
+    const err = new Error(
+      'Nome completo do titular inválido. Informe nome e sobrenome (apenas letras, sem números ou símbolos).'
+    );
+    (err as any).status = 400;
+    throw err;
+  }
+
   let customer = await findCustomer({ email: params.email });
   if (!customer && params.externalReference) {
     customer = await findCustomer({ externalReference: params.externalReference });
@@ -172,14 +200,27 @@ export async function getOrCreateCustomer(params: {
   const cleanCpf = cleanDigits.length > 0 ? cleanDigits : undefined;
 
   if (customer) {
-    if (cleanCpf && !customer.cpfCnpj) {
+    const currentAsaasName = sanitizeFullName(customer.name);
+    const updatePayload: Record<string, string> = {};
+
+    if (currentAsaasName !== cleanName) {
+      updatePayload.name = cleanName;
+    }
+    if (cleanCpf && customer.cpfCnpj !== cleanCpf) {
+      updatePayload.cpfCnpj = cleanCpf;
+    }
+    if (params.externalReference && customer.externalReference !== params.externalReference) {
+      updatePayload.externalReference = params.externalReference;
+    }
+
+    if (Object.keys(updatePayload).length > 0) {
       try {
         customer = await asaasFetch<AsaasCustomer>(`/customers/${customer.id}`, {
           method: 'PUT',
-          body: JSON.stringify({ cpfCnpj: cleanCpf }),
+          body: JSON.stringify(updatePayload),
         });
       } catch (err) {
-        console.warn('Não foi possível atualizar CPF do cliente no Asaas:', err);
+        console.warn('Não foi possível atualizar dados do cliente no Asaas:', err);
       }
     }
     return customer;
@@ -188,7 +229,7 @@ export async function getOrCreateCustomer(params: {
   customer = await asaasFetch<AsaasCustomer>('/customers', {
     method: 'POST',
     body: JSON.stringify({
-      name: params.name || params.email.split('@')[0],
+      name: cleanName,
       email: params.email,
       ...(cleanCpf ? { cpfCnpj: cleanCpf } : {}),
       externalReference: params.externalReference,
