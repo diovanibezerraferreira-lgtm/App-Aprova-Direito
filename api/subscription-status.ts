@@ -39,10 +39,14 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
     if (config.isConfigured && userDocData?.subscriptionId) {
       try {
-        const sub = await asaasFetch<any>(`/subscriptions/${userDocData.subscriptionId}`);
-        const payments = await asaasFetch<any>(`/subscriptions/${userDocData.subscriptionId}/payments`);
+        const [sub, payments] = await Promise.all([
+          asaasFetch<any>(`/subscriptions/${userDocData.subscriptionId}`, {}, 5000),
+          asaasFetch<any>(`/subscriptions/${userDocData.subscriptionId}/payments`, {}, 5000),
+        ]);
         const paymentList = payments.data || [];
-        const pendingPayment = paymentList.find((p: any) => p.status === 'PENDING' || p.status === 'OVERDUE');
+        const pendingPayment = paymentList.find(
+          (p: any) => p.status === 'PENDING' || p.status === 'OVERDUE'
+        );
         if (pendingPayment?.invoiceUrl) {
           latestCheckoutUrl = pendingPayment.invoiceUrl;
         }
@@ -71,6 +75,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     });
   } catch (error: any) {
     console.error('Erro em subscription-status:', error);
-    return sendJson(res, error.status || 500, { error: error.message || 'Erro ao consultar assinatura.' });
+    return sendJson(res, error.status || 500, {
+      error: error.message || 'Erro ao consultar assinatura.',
+    });
   }
 }

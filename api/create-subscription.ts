@@ -11,26 +11,66 @@ type RequestWithBody = IncomingMessage & { body?: any };
 
 async function readBody(req: RequestWithBody): Promise<any> {
   if (req.body !== undefined) {
+    if (Buffer.isBuffer(req.body)) {
+      const str = req.body.toString('utf-8').trim();
+      return str ? JSON.parse(str) : {};
+    }
     if (typeof req.body === 'string') {
-      return req.body ? JSON.parse(req.body) : {};
+      const str = req.body.trim();
+      return str ? JSON.parse(str) : {};
     }
     return req.body || {};
   }
 
+  if (req.readableEnded) {
+    return {};
+  }
+
   return new Promise((resolve, reject) => {
+    let settled = false;
     let data = '';
-    req.on('data', chunk => {
-      data += chunk;
-    });
-    req.on('end', () => {
-      if (!data) return resolve({});
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      req.removeListener('data', onData);
+      req.removeListener('end', onEnd);
+      req.removeListener('error', onError);
+    };
+
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error('Tempo limite ao ler corpo da requisição.'));
+    }, 4000);
+
+    const onData = (chunk: Buffer | string) => {
+      data += typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
+    };
+
+    const onEnd = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      const trimmed = data.trim();
+      if (!trimmed) return resolve({});
       try {
-        resolve(JSON.parse(data));
+        resolve(JSON.parse(trimmed));
       } catch {
         reject(new Error('Corpo da requisição inválido (JSON malformado)'));
       }
-    });
-    req.on('error', reject);
+    };
+
+    const onError = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(err);
+    };
+
+    req.on('data', onData);
+    req.on('end', onEnd);
+    req.on('error', onError);
   });
 }
 
@@ -126,13 +166,14 @@ export default async function handler(req: RequestWithBody, res: ServerResponse)
     const { subscription, invoiceUrl } = await createMonthlySubscription({
       customerId: customer.id,
       externalReference: user.uid,
-      value: 29.90,
+      value: 29.9,
       description: 'Assinatura Aprova Direito Premium - Mensal (R$ 29,90)',
     });
 
     if (!invoiceUrl) {
       return sendJson(res, 502, {
-        error: 'Assinatura criada no Asaas, porém o endereço da fatura (invoiceUrl) ainda não foi retornado.',
+        error:
+          'Assinatura criada no Asaas, porém o endereço da fatura (invoiceUrl) ainda não foi retornado.',
       });
     }
 

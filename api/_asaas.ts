@@ -37,28 +37,46 @@ export interface AsaasPayment {
   externalReference?: string;
 }
 
+function cleanSecret(value?: string): string {
+  if (!value) return '';
+  let trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 export function getAsaasConfig() {
-  const apiKey = process.env.ASAAS_API_KEY || '';
-  const env = (process.env.ASAAS_ENVIRONMENT || 'sandbox').toLowerCase();
+  const apiKey = cleanSecret(process.env.ASAAS_API_KEY);
+  const env = (cleanSecret(process.env.ASAAS_ENVIRONMENT) || 'sandbox').toLowerCase();
   const isProduction = env === 'production';
-  const baseUrl = isProduction 
+  const baseUrl = isProduction
     ? 'https://api.asaas.com/api/v3'
     : 'https://sandbox.asaas.com/api/v3';
+  const webhookToken = cleanSecret(process.env.ASAAS_WEBHOOK_TOKEN);
 
   return {
     apiKey,
     env,
     isProduction,
     baseUrl,
-    webhookToken: process.env.ASAAS_WEBHOOK_TOKEN || '',
-    isConfigured: !!apiKey && apiKey.trim().length > 0,
+    webhookToken,
+    isConfigured: apiKey.length > 0,
   };
 }
 
 /**
- * Perform an authenticated request to Asaas API
+ * Perform an authenticated request to Asaas API with an explicit timeout
+ * so external stalls cannot cause serverless 408/504 timeouts.
  */
-export async function asaasFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function asaasFetch<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  timeoutMs: number = 8000
+): Promise<T> {
   const { apiKey, baseUrl, isConfigured } = getAsaasConfig();
 
   if (!isConfigured) {
@@ -69,16 +87,32 @@ export async function asaasFetch<T>(endpoint: string, options: RequestInit = {})
   const url = `${baseUrl}${cleanEndpoint}`;
 
   const headers: Record<string, string> = {
-    'access_token': apiKey,
+    access_token: apiKey,
     'Content-Type': 'application/json',
     'User-Agent': 'AprovaDireito/1.0',
-    ...(options.headers as Record<string, string> || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      signal: options.signal ?? controller.signal,
+    });
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      const timeoutErr = new Error(`Tempo limite excedido ao comunicar com o Asaas (${timeoutMs}ms).`);
+      (timeoutErr as any).status = 504;
+      throw timeoutErr;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
 
   const text = await response.text();
   let data: any;
@@ -89,9 +123,10 @@ export async function asaasFetch<T>(endpoint: string, options: RequestInit = {})
   }
 
   if (!response.ok) {
-    const errorMsg = data?.errors?.map((e: any) => e.description).join(', ') 
-      || data?.message 
-      || `Erro Asaas HTTP ${response.status}`;
+    const errorMsg =
+      data?.errors?.map((e: any) => e.description).join(', ') ||
+      data?.message ||
+      `Erro Asaas HTTP ${response.status}`;
     const err = new Error(errorMsg);
     (err as any).status = response.status;
     (err as any).data = data;
@@ -104,8 +139,11 @@ export async function asaasFetch<T>(endpoint: string, options: RequestInit = {})
 /**
  * Find customer by email or externalReference (Firebase UID)
  */
-export async function findCustomer(identifier: { email?: string; externalReference?: string }): Promise<AsaasCustomer | null> {
-  const query = identifier.email 
+export async function findCustomer(identifier: {
+  email?: string;
+  externalReference?: string;
+}): Promise<AsaasCustomer | null> {
+  const query = identifier.email
     ? `email=${encodeURIComponent(identifier.email)}`
     : `externalReference=${encodeURIComponent(identifier.externalReference || '')}`;
 
@@ -125,19 +163,20 @@ export async function getOrCreateCustomer(params: {
   cpfCnpj?: string;
   externalReference: string;
 }): Promise<AsaasCustomer> {
-  // Check if customer already exists by email or externalReference
   let customer = await findCustomer({ email: params.email });
   if (!customer && params.externalReference) {
     customer = await findCustomer({ externalReference: params.externalReference });
   }
 
+  const cleanDigits = params.cpfCnpj ? params.cpfCnpj.replace(/\D/g, '') : '';
+  const cleanCpf = cleanDigits.length > 0 ? cleanDigits : undefined;
+
   if (customer) {
-    // If CPF was provided and customer doesn't have it, update via PUT /customers/{id}
-    if (params.cpfCnpj && !customer.cpfCnpj) {
+    if (cleanCpf && !customer.cpfCnpj) {
       try {
         customer = await asaasFetch<AsaasCustomer>(`/customers/${customer.id}`, {
           method: 'PUT',
-          body: JSON.stringify({ cpfCnpj: params.cpfCnpj.replace(/\D/g, '') }),
+          body: JSON.stringify({ cpfCnpj: cleanCpf }),
         });
       } catch (err) {
         console.warn('Não foi possível atualizar CPF do cliente no Asaas:', err);
@@ -146,14 +185,12 @@ export async function getOrCreateCustomer(params: {
     return customer;
   }
 
-  // Create new customer
-  const cleanCpf = params.cpfCnpj ? params.cpfCnpj.replace(/\D/g, '') : undefined;
   customer = await asaasFetch<AsaasCustomer>('/customers', {
     method: 'POST',
     body: JSON.stringify({
       name: params.name || params.email.split('@')[0],
       email: params.email,
-      cpfCnpj: cleanCpf,
+      ...(cleanCpf ? { cpfCnpj: cleanCpf } : {}),
       externalReference: params.externalReference,
       notificationDisabled: false,
     }),
@@ -165,17 +202,21 @@ export async function getOrCreateCustomer(params: {
 /**
  * Retrieve pending invoiceUrl for an existing subscription if still active/pending
  */
-export async function getSubscriptionPendingCheckoutUrl(subscriptionId: string): Promise<string | null> {
+export async function getSubscriptionPendingCheckoutUrl(
+  subscriptionId: string
+): Promise<string | null> {
   try {
-    const sub = await asaasFetch<AsaasSubscription>(`/subscriptions/${subscriptionId}`);
+    const sub = await asaasFetch<AsaasSubscription>(`/subscriptions/${subscriptionId}`, {}, 5000);
     if (!sub || sub.status !== 'ACTIVE') {
       return null;
     }
     const paymentsResult = await asaasFetch<{ data: AsaasPayment[] }>(
-      `/subscriptions/${subscriptionId}/payments`
+      `/subscriptions/${subscriptionId}/payments`,
+      {},
+      5000
     );
     const pending = (paymentsResult.data || []).find(
-      p => p.status === 'PENDING' || p.status === 'OVERDUE'
+      (p) => p.status === 'PENDING' || p.status === 'OVERDUE'
     );
     return pending?.invoiceUrl || null;
   } catch {
@@ -190,11 +231,10 @@ export async function getSubscriptionPendingCheckoutUrl(subscriptionId: string):
  */
 export async function createMonthlySubscription(params: {
   customerId: string;
-  externalReference: string; // Firebase UID
+  externalReference: string;
   value?: number;
   description?: string;
 }): Promise<{ subscription: AsaasSubscription; invoiceUrl: string }> {
-  // Format today's date in America/Sao_Paulo (YYYY-MM-DD)
   const nextDueDateStr = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Sao_Paulo',
     year: 'numeric',
@@ -206,8 +246,8 @@ export async function createMonthlySubscription(params: {
     method: 'POST',
     body: JSON.stringify({
       customer: params.customerId,
-      billingType: 'UNDEFINED', // Allows customer to choose Credit Card or Pix on the hosted invoice
-      value: params.value ?? 29.90,
+      billingType: 'UNDEFINED',
+      value: params.value ?? 29.9,
       nextDueDate: nextDueDateStr,
       cycle: 'MONTHLY',
       description: params.description || 'Assinatura Aprova Direito Premium - Mensal (R$ 29,90)',
@@ -215,7 +255,6 @@ export async function createMonthlySubscription(params: {
     }),
   });
 
-  // Get the first pending payment of this subscription to retrieve the invoiceUrl (safe checkout)
   const paymentsResult = await asaasFetch<{ data: AsaasPayment[] }>(
     `/subscriptions/${subscription.id}/payments`
   );
