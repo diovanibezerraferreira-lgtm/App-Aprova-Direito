@@ -1,10 +1,11 @@
 import express from 'express';
+import http from 'http';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
-// Load environment variables
+// Load environment variables (.env / .env.local)
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,8 +13,13 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
+  const httpServer = http.createServer(app);
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   const isProd = process.env.NODE_ENV === 'production';
+  const disableHmr = process.env.DISABLE_HMR === 'true';
+
+  // Parse JSON bodies for API endpoints
+  app.use('/api', express.json({ limit: '1mb' }));
 
   // Mount API endpoints matching Vercel serverless functions in /api/
   app.all('/api/create-subscription', async (req, res) => {
@@ -52,8 +58,8 @@ async function startServer() {
     }
   });
 
-  // Diagnostic endpoint for environment check (does not leak secret keys)
-  app.get('/api/health', (req, res) => {
+  // Safe healthcheck endpoint (never leaks secret keys)
+  app.get('/api/health', (_req, res) => {
     const hasAsaasKey = !!process.env.ASAAS_API_KEY;
     const hasWebhookToken = !!process.env.ASAAS_WEBHOOK_TOKEN;
     const asaasEnv = process.env.ASAAS_ENVIRONMENT || 'sandbox';
@@ -70,22 +76,30 @@ async function startServer() {
   });
 
   if (isProd) {
-    // Serve static assets in production
     app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (req, res) => {
+    app.get('*', (_req, res) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   } else {
-    // Dev mode with Vite middleware
+    // Dev mode with Vite middleware bound cleanly to the shared HTTP server
+    // Attach server.ws to httpServer even when HMR is disabled so Vite 8 client
+    // connects on the active server port instead of falling back to port 24678.
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        allowedHosts: true,
+        hmr: disableHmr ? false : { server: httpServer },
+        ws: { server: httpServer },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://0.0.0.0:${PORT} in ${isProd ? 'production' : 'development'} mode`);
+  httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(
+      `Server running on http://0.0.0.0:${PORT} in ${isProd ? 'production' : 'development'} mode (HMR: ${disableHmr ? 'disabled' : 'attached'})`
+    );
   });
 }
 

@@ -28,13 +28,14 @@ service cloud.firestore {
 
     // Protected financial fields that only the backend Admin SDK may modify
     function doesNotModifyFinancialFields() {
-      let protectedFields = ['isPremium', 'subscriptionStatus', 'subscriptionId', 'asaasCustomerId', 'subscriptionDueDate', 'lastPaymentDate', 'paymentMethod'];
+      let protectedFields = ['isPremium', 'plan', 'subscriptionStatus', 'subscriptionId', 'asaasCustomerId', 'subscriptionDueDate', 'lastPaymentDate', 'paymentMethod'];
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedFields);
     }
 
     function validInitialFinancialState() {
-      // Clients creating their own document cannot set isPremium to true or assign active subscriptions
+      // Clients creating their own document cannot set isPremium to true, plan to premium, or assign active subscriptions
       return (!('isPremium' in request.resource.data) || request.resource.data.isPremium == false)
+          && (!('plan' in request.resource.data) || request.resource.data.plan == 'gratuito')
           && (!('subscriptionStatus' in request.resource.data) || request.resource.data.subscriptionStatus == null || request.resource.data.subscriptionStatus == 'NONE');
     }
 

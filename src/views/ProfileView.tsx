@@ -179,10 +179,31 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Plano atual:</span>
-                <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                  Gratuito
-                </span>
+                {userProfile?.isPremium ? (
+                  <span className="font-bold text-[#0B1F3A] bg-[#D4AF37]/25 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                    <Crown className="w-3 h-3 text-[#D4AF37] fill-current" />
+                    Premium Ativo
+                  </span>
+                ) : (
+                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                    Gratuito
+                  </span>
+                )}
               </div>
+              {userProfile?.subscriptionStatus && userProfile.subscriptionStatus !== 'NONE' && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Assinatura:</span>
+                  <span className="font-semibold text-slate-700">
+                    {userProfile.subscriptionStatus === 'ACTIVE'
+                      ? 'Ativa'
+                      : userProfile.subscriptionStatus === 'PENDING'
+                      ? 'Aguardando pagamento'
+                      : userProfile.subscriptionStatus === 'OVERDUE'
+                      ? 'Pagamento em atraso'
+                      : 'Cancelada'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -192,19 +213,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Plano do Aluno
               </span>
-              <span className="text-xs font-bold text-[#0B1F3A] bg-[#D4AF37]/20 px-2 py-0.5 rounded-full">
-                Gratuito
+              <span
+                className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  userProfile?.isPremium
+                    ? 'text-[#0B1F3A] bg-[#D4AF37]'
+                    : 'text-[#0B1F3A] bg-[#D4AF37]/20'
+                }`}
+              >
+                {userProfile?.isPremium ? 'Premium' : 'Gratuito'}
               </span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Você está utilizando o plano gratuito. Desbloqueie simulados ilimitados e banco ampliado com o Premium.
+              {userProfile?.isPremium
+                ? 'Sua assinatura Premium Aprova Direito (R$ 29,90/mês) está ativa com acesso total liberado.'
+                : 'Você está utilizando o plano gratuito. Desbloqueie simulados ilimitados e banco ampliado com o Premium.'}
             </p>
             <button
               onClick={onOpenPremium}
               className="w-full py-2 bg-[#0B1F3A] hover:bg-[#16365C] text-[#D4AF37] font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow"
             >
               <Crown className="w-3.5 h-3.5 fill-current" />
-              <span>Conhecer Premium (R$ 29,90)</span>
+              <span>
+                {userProfile?.isPremium ? 'Ver Detalhes do Premium' : 'Assinar Premium (R$ 29,90)'}
+              </span>
             </button>
           </div>
 

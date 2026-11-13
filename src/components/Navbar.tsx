@@ -114,7 +114,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <Crown className="w-3.5 h-3.5 fill-current" />
-              <span className="hidden sm:inline">Assinar</span> Premium
+              {authProfile?.isPremium || userProfile.isPremium ? (
+                <span>Premium Ativo</span>
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Assinar</span> Premium
+                </>
+              )}
             </button>
 
             {/* Profile / Account Area */}

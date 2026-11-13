@@ -132,11 +132,11 @@ export async function getOrCreateCustomer(params: {
   }
 
   if (customer) {
-    // If CPF was provided and customer doesn't have it, optionally update
+    // If CPF was provided and customer doesn't have it, update via PUT /customers/{id}
     if (params.cpfCnpj && !customer.cpfCnpj) {
       try {
         customer = await asaasFetch<AsaasCustomer>(`/customers/${customer.id}`, {
-          method: 'POST',
+          method: 'PUT',
           body: JSON.stringify({ cpfCnpj: params.cpfCnpj.replace(/\D/g, '') }),
         });
       } catch (err) {
@@ -163,6 +163,27 @@ export async function getOrCreateCustomer(params: {
 }
 
 /**
+ * Retrieve pending invoiceUrl for an existing subscription if still active/pending
+ */
+export async function getSubscriptionPendingCheckoutUrl(subscriptionId: string): Promise<string | null> {
+  try {
+    const sub = await asaasFetch<AsaasSubscription>(`/subscriptions/${subscriptionId}`);
+    if (!sub || sub.status !== 'ACTIVE') {
+      return null;
+    }
+    const paymentsResult = await asaasFetch<{ data: AsaasPayment[] }>(
+      `/subscriptions/${subscriptionId}/payments`
+    );
+    const pending = (paymentsResult.data || []).find(
+      p => p.status === 'PENDING' || p.status === 'OVERDUE'
+    );
+    return pending?.invoiceUrl || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Create a monthly recurring subscription for Aprova Direito Premium
  * Value: R$ 29,90/month
  * billingType 'UNDEFINED' allows user to choose between Credit Card and Pix on Asaas checkout page
@@ -173,9 +194,13 @@ export async function createMonthlySubscription(params: {
   value?: number;
   description?: string;
 }): Promise<{ subscription: AsaasSubscription; invoiceUrl: string }> {
-  const nextDueDate = new Date();
-  nextDueDate.setDate(nextDueDate.getDate() + 1); // 1 day from now
-  const nextDueDateStr = nextDueDate.toISOString().split('T')[0];
+  // Format today's date in America/Sao_Paulo (YYYY-MM-DD)
+  const nextDueDateStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 
   const subscription = await asaasFetch<AsaasSubscription>('/subscriptions', {
     method: 'POST',

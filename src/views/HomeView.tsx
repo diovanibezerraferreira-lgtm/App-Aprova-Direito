@@ -412,10 +412,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   className="w-full py-3 px-4 bg-[#0B1F3A] hover:bg-[#16365C] text-[#D4AF37] font-bold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
                 >
                   <Crown className="w-4 h-4" />
-                  <span>Assinar Premium (R$ 29,90/mês)</span>
+                  <span>
+                    {userProfile.isPremium
+                      ? 'Seu Plano Premium está Ativo'
+                      : 'Assinar Premium (R$ 29,90/mês)'}
+                  </span>
                 </button>
                 <p className="text-[10px] text-center text-slate-400 mt-2">
-                  Primeira versão demonstrativa · Sem fidelidade
+                  Cartão de Crédito Recorrente ou Pix · Sem fidelidade
                 </p>
               </div>
             </div>

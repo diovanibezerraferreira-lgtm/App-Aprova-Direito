@@ -1,9 +1,22 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { verifyFirebaseUser, getAdminFirestore } from './_firebaseAdmin.js';
-import { getAsaasConfig, getOrCreateCustomer, createMonthlySubscription } from './_asaas.js';
+import {
+  getAsaasConfig,
+  getOrCreateCustomer,
+  createMonthlySubscription,
+  getSubscriptionPendingCheckoutUrl,
+} from './_asaas.js';
 
-// Helper to parse JSON body
-async function readBody(req: IncomingMessage): Promise<any> {
+type RequestWithBody = IncomingMessage & { body?: any };
+
+async function readBody(req: RequestWithBody): Promise<any> {
+  if (req.body !== undefined) {
+    if (typeof req.body === 'string') {
+      return req.body ? JSON.parse(req.body) : {};
+    }
+    return req.body || {};
+  }
+
   return new Promise((resolve, reject) => {
     let data = '';
     req.on('data', chunk => {
@@ -13,7 +26,7 @@ async function readBody(req: IncomingMessage): Promise<any> {
       if (!data) return resolve({});
       try {
         resolve(JSON.parse(data));
-      } catch (err) {
+      } catch {
         reject(new Error('Corpo da requisição inválido (JSON malformado)'));
       }
     });
@@ -27,13 +40,13 @@ function sendJson(res: ServerResponse, status: number, payload: any) {
   res.end(JSON.stringify(payload));
 }
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
+export default async function handler(req: RequestWithBody, res: ServerResponse) {
   if (req.method !== 'POST') {
     return sendJson(res, 405, { error: 'Método não permitido. Utilize POST.' });
   }
 
   try {
-    // 1. Verify user authentication via Firebase Auth
+    // 1. Verify user authentication via Firebase Auth ID Token
     const user = await verifyFirebaseUser(req);
     if (!user || !user.uid) {
       return sendJson(res, 401, {
@@ -47,13 +60,51 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const config = getAsaasConfig();
     if (!config.isConfigured) {
       return sendJson(res, 500, {
-        error: 'A chave da API do Asaas (ASAAS_API_KEY) não está configurada no servidor.',
-        isSandbox: true,
+        error:
+          'A variável ASAAS_API_KEY não está configurada no servidor. Configure a chave do Asaas (Sandbox ou Produção) no Vercel ou .env.',
+        isSandbox: !config.isProduction,
         setupNeeded: true,
       });
     }
 
-    // 2. Identify customer name and email
+    // 2. Check existing subscription state in Firestore to avoid duplicates
+    const db = getAdminFirestore();
+    let existingUserData: any = null;
+    if (db) {
+      try {
+        const userSnap = await db.collection('users').doc(user.uid).get();
+        if (userSnap.exists) {
+          existingUserData = userSnap.data();
+        }
+      } catch (dbReadErr) {
+        console.warn('Aviso ao verificar assinatura prévia no Firestore:', dbReadErr);
+      }
+    }
+
+    if (existingUserData?.isPremium && existingUserData?.subscriptionStatus === 'ACTIVE') {
+      return sendJson(res, 400, {
+        error: 'Sua assinatura Premium já está ativa.',
+      });
+    }
+
+    if (existingUserData?.subscriptionId && existingUserData?.subscriptionStatus === 'PENDING') {
+      const existingCheckoutUrl = await getSubscriptionPendingCheckoutUrl(
+        existingUserData.subscriptionId
+      );
+      if (existingCheckoutUrl) {
+        return sendJson(res, 200, {
+          success: true,
+          checkoutUrl: existingCheckoutUrl,
+          subscriptionId: existingUserData.subscriptionId,
+          customerId: existingUserData.asaasCustomerId || null,
+          environment: config.env,
+          sandbox: !config.isProduction,
+          reused: true,
+        });
+      }
+    }
+
+    // 3. Identify customer name and email from verified Firebase user
     const email = user.email || body.email;
     if (!email) {
       return sendJson(res, 400, {
@@ -63,7 +114,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
     const name = user.name || body.name || email.split('@')[0];
 
-    // 3. Create or retrieve customer in Asaas
+    // 4. Create or retrieve customer in Asaas (linked via externalReference = Firebase UID)
     const customer = await getOrCreateCustomer({
       name,
       email,
@@ -71,7 +122,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       externalReference: user.uid,
     });
 
-    // 4. Create monthly subscription (R$ 29,90) with hosted checkout (Credit Card + Pix)
+    // 5. Create monthly subscription (R$ 29,90) with hosted checkout (Credit Card + Pix)
     const { subscription, invoiceUrl } = await createMonthlySubscription({
       customerId: customer.id,
       externalReference: user.uid,
@@ -79,8 +130,13 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       description: 'Assinatura Aprova Direito Premium - Mensal (R$ 29,90)',
     });
 
-    // 5. Update user record in Firestore with asaasCustomerId and pending subscription details
-    const db = getAdminFirestore();
+    if (!invoiceUrl) {
+      return sendJson(res, 502, {
+        error: 'Assinatura criada no Asaas, porém o endereço da fatura (invoiceUrl) ainda não foi retornado.',
+      });
+    }
+
+    // 6. Record pending subscription metadata in Firestore (NEVER grants isPremium here — only webhook does!)
     if (db) {
       try {
         await db.collection('users').doc(user.uid).set(

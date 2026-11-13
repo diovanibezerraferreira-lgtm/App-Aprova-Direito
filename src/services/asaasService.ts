@@ -17,6 +17,7 @@ export interface SubscriptionStatusResponse {
   subscriptionId?: string | null;
   asaasCustomerId?: string | null;
   subscriptionDueDate?: string | null;
+  latestCheckoutUrl?: string | null;
   environment?: string;
   sandbox?: boolean;
   asaasDetails?: any;
